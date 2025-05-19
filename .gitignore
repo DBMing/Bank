@@ -1,0 +1,14 @@
+.ipynb_checkpoints
+.lingma_storage
+.virtual_documents
+miniconda3
+miniconda.sh
+RAG/documents
+RAG/vector_test
+RAG/vectorDB
+document
+models
+data/full_response_A001.json
+data/full_response_A002.json
+data/full_response_A004.json
+data/full_response_A003.json
