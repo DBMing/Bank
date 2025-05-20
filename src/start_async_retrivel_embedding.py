@@ -10,13 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils"))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "RAG", "embedding"))
 from vllm_server import generate_chat_completion  # 保持原接口不变（同步）
-from search_document_index import DocumentSearcher  # 导入文档搜索器
+from sear2 import DocumentSearcher  # 导入文档搜索器
 
 # 初始化文档搜索器
 base_path = os.path.dirname(os.path.dirname(__file__))
 document_searcher = DocumentSearcher(
     index_folder="/mnt/workspace/RAG/vectorDB",
-    index_prefix="all_index_400_100"
+    index_prefix="all_index_300_100"
 )
 
 # ========== 同步工具函数 ==========
@@ -61,7 +61,7 @@ def retrieve_relevant_passages(query, top_k=5):
         格式化的检索段落文本
     """
     try:
-        results = document_searcher.search(query, k=top_k)
+        results = document_searcher.hybrid_search(query, k=top_k, vector_weight=0)
         
         # 格式化检索结果
         formatted_passages = []
@@ -87,8 +87,6 @@ def sync_process_question(question_data):
     
     # 构建查询文本
     query_text = question_text
-    if content:
-        query_text += " " + content
     
     # 检索相关段落
     retrieved_passages = retrieve_relevant_passages(query_text, top_k=5)
@@ -143,9 +141,20 @@ D. 【正确/错误】, 理由是…
         answer = extract_answer(responses[0], question_category)
 
     # 返回两个结构
+    response_file_path = os.path.join(base_path, "data", "6666.json")
+    with open(response_file_path, 'a', encoding='utf-8') as f:
+        response_data = {
+            "id": question_id,
+            "question": question_text,
+            "retrieved": retrieved_passages,
+            "response": responses[0]
+        }
+        f.write(json.dumps(response_data, ensure_ascii=False) + '\n')
+
+
     question_all = question_text + (content if content is not None else "")
     result_summary = {"id": question_id, "answer": answer}
-    result_full = {"id": question_id, "question": question_all, "response": responses[0], "answer": answer}
+    result_full = {"id": question_id, "question": question_all, "prompt": prompt, "response": responses[0], "answer": answer}
     return result_summary, result_full
 
 # ========== 异步封装 ==========
@@ -176,8 +185,11 @@ def prepare():
 async def async_main():
     base_path = os.path.dirname(os.path.dirname(__file__))
     input_file = os.path.join(base_path, "data", "testA.json")
-    output_file = os.path.join(base_path, "data", "predictA005.json")
-    full_output_file = os.path.join(base_path, "data", "response_A005.json")  # 新增
+    output_file = os.path.join(base_path, "data", "predictA009_300_100_0.json")
+    full_output_file = os.path.join(base_path, "data", "full_response_A008_300_100_0.json")  # 新增
+    # input_file = os.path.join(base_path, "data", "part_train.json")
+    # output_file = os.path.join(base_path, "data", "part_train_answer3.json")
+    # full_output_file = os.path.join(base_path, "data", "part_train_response3.json")  # 新增
 
     print("读取问题中...")
     questions = read_questions(input_file)
